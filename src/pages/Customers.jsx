@@ -18,6 +18,7 @@ function Customers() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [costumeSearchTerm, setCostumeSearchTerm] = useState('');
   const [rentalStartDate, setRentalStartDate] = useState('');
   const [upfrontPayment, setUpfrontPayment] = useState('');
   const [availableCostumes, setAvailableCostumes] = useState([]);
@@ -605,6 +606,16 @@ function Customers() {
               </div>
               <div className="mb-4">
                 <h3 className="text-lg font-semibold text-neutral-900 mb-3">Sélectionner Costumes</h3>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom de costume..."
+                    value={costumeSearchTerm}
+                    onChange={(e) => setCostumeSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
                   {availableCostumes.length === 0 ? (
                     <div className="col-span-2 text-center py-8">
@@ -618,33 +629,38 @@ function Customers() {
                       )}
                     </div>
                   ) : (
-                    availableCostumes.map((costume) => (
-                      <div
-                        key={costume.id}
-                        onClick={() => toggleCostumeSelection(costume.id)}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                          selectedCostumes.includes(costume.id)
-                            ? 'border-primary-600 bg-primary-50'
-                            : 'border-neutral-200 hover:border-primary-300'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedCostumes.includes(costume.id)}
-                            onChange={() => {}}
-                            className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
-                          />
-                          <div>
-                            <p className="font-semibold text-neutral-900">{costume.name}</p>
-                            <p className="text-sm text-neutral-600">ID: {costume.costume_id} • Size: {costume.size}</p>
-                            <p className="text-sm font-semibold text-primary-600">
-                              {costume.rental_price || 0} DH • Stock: {costume.available_quantity || 0}
-                            </p>
+                    availableCostumes
+                      .filter(costume => 
+                        costume.name.toLowerCase().includes(costumeSearchTerm.toLowerCase()) ||
+                        costume.costume_id.toLowerCase().includes(costumeSearchTerm.toLowerCase())
+                      )
+                      .map((costume) => (
+                        <div
+                          key={costume.id}
+                          onClick={() => toggleCostumeSelection(costume.id)}
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedCostumes.includes(costume.id)
+                              ? 'border-primary-600 bg-primary-50'
+                              : 'border-neutral-200 hover:border-primary-300'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedCostumes.includes(costume.id)}
+                              onChange={() => {}}
+                              className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                            />
+                            <div>
+                              <p className="font-semibold text-neutral-900">{costume.name}</p>
+                              <p className="text-sm text-neutral-600">ID: {costume.costume_id} • Size: {costume.size}</p>
+                              <p className="text-sm font-semibold text-primary-600">
+                                {costume.rental_price || 0} DH • Stock: {costume.available_quantity || 0}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      ))
                   )}
                 </div>
                 {hasMoreCostumes && !loadingCostumes && availableCostumes.length > 0 && (
@@ -669,6 +685,7 @@ function Customers() {
                     setShowRentalModal(false);
                     setSelectedCostumes([]);
                     setRentalStartDate('');
+                    setCostumeSearchTerm('');
                     setExpectedReturnDate('');
                     setUpfrontPayment('');
                     setRentalNotes('');
