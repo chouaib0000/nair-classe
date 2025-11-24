@@ -79,7 +79,6 @@ function Customers() {
     const { data, error } = await supabase
       .from('costumes')
       .select('id, costume_id, name, size, rental_price, available_quantity, quantity')
-      .gt('available_quantity', 0)
       .range((pageNum - 1) * pageSize, pageNum * pageSize - 1);
 
     if (!error && data) {
@@ -185,9 +184,10 @@ function Customers() {
     for (const costumeId of selectedCostumes) {
       const costume = availableCostumes.find(c => c.id === costumeId);
       if (costume) {
+        const newQuantity = (costume.available_quantity || 0) - 1;
         const { error: updateError } = await supabase
           .from('costumes')
-          .update({ available_quantity: (costume.available_quantity || 1) - 1 })
+          .update({ available_quantity: newQuantity })
           .eq('id', costumeId);
 
         if (updateError) {
@@ -196,15 +196,6 @@ function Customers() {
         }
       }
     }
-
-    Swal.fire('Success', 'Costumes rented successfully!', 'success');
-    setShowRentalModal(false);
-    setRentalStartDate('');
-    setUpfrontPayment('');
-    setSelectedCostumes([]);
-    setExpectedReturnDate('');
-    setRentalNotes('');
-    fetchAvailableCostumesBasic();
   };
 
   const handleEdit = (customer) => {
@@ -637,12 +628,14 @@ function Customers() {
                       .map((costume) => (
                         <div
                           key={costume.id}
-                          onClick={() => toggleCostumeSelection(costume.id)}
                           className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                             selectedCostumes.includes(costume.id)
                               ? 'border-primary-600 bg-primary-50'
-                              : 'border-neutral-200 hover:border-primary-300'
+                              : (costume.available_quantity || 0) > 0
+                                ? 'border-neutral-200 hover:border-primary-300'
+                                : 'border-red-200 bg-red-50 hover:border-red-300'
                           }`}
+                          onClick={() => toggleCostumeSelection(costume.id)}
                         >
                           <div className="flex items-center space-x-3">
                             <input
@@ -654,8 +647,11 @@ function Customers() {
                             <div>
                               <p className="font-semibold text-neutral-900">{costume.name}</p>
                               <p className="text-sm text-neutral-600">ID: {costume.costume_id} • Size: {costume.size}</p>
-                              <p className="text-sm font-semibold text-primary-600">
+                              <p className={`text-sm font-semibold ${
+                                (costume.available_quantity || 0) > 0 ? 'text-primary-600' : 'text-red-600'
+                              }`}>
                                 {costume.rental_price || 0} DH • Stock: {costume.available_quantity || 0}
+                                {(costume.available_quantity || 0) <= 0 && ' (Épuisé)'}
                               </p>
                             </div>
                           </div>
