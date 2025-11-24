@@ -183,7 +183,7 @@ function Rentals() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Navigation />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-neutral-900">{t('rentalsTitle')}</h1>
           <p className="mt-2 text-neutral-600">{t('rentalsSubtitle')}</p>
@@ -194,17 +194,16 @@ function Rentals() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search rentals..."
               placeholder={t('searchRentals')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
             <option value="all">{t('allRentals')}</option>
             <option value="active">{t('active')}</option>
