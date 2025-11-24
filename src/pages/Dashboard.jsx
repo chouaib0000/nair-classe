@@ -199,13 +199,13 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
       <Navigation />
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="mb-12">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">{t('dashboardTitle')}</h1>
           <p className="mt-2 sm:mt-3 text-sm sm:text-base lg:text-lg text-neutral-600">{t('dashboardSubtitle')}</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
           {statCards.map((stat, index) => (
             <div key={index} className="group bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-4 sm:p-6 border border-neutral-100 hover:border-primary-200 hover:-translate-y-1">
               <div className="flex items-center justify-between">
