@@ -345,7 +345,7 @@ function Customers() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Navigation />
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('customersTitle')}</h1>
@@ -370,13 +370,14 @@ function Customers() {
               placeholder={t('searchCustomers')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-900">{t('name')}</th>
@@ -431,6 +432,7 @@ function Customers() {
               ))}
             </tbody>
           </table>
+          </div>
           {!searchTerm && hasMore && (
             <div className="p-6 border-t border-neutral-100 text-center">
               <button
