@@ -31,7 +31,7 @@ function RoleSelection() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-6xl">
         <div className="text-center mb-12">
           <img 
@@ -47,7 +47,7 @@ function RoleSelection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           {modules.map((module) => (
             <div
               key={module.id}
