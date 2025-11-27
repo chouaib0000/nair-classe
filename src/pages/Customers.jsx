@@ -345,7 +345,7 @@ function Customers() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Navigation />
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">{t('customersTitle')}</h1>
@@ -370,14 +370,13 @@ function Customers() {
               placeholder={t('searchCustomers')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-neutral-100 overflow-x-auto">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-neutral-50">
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-neutral-900">{t('name')}</th>
@@ -432,7 +431,6 @@ function Customers() {
               ))}
             </tbody>
           </table>
-          </div>
           {!searchTerm && hasMore && (
             <div className="p-6 border-t border-neutral-100 text-center">
               <button
@@ -630,12 +628,10 @@ function Customers() {
                       .map((costume) => (
                         <div
                           key={costume.id}
-                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                          className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
                             selectedCostumes.includes(costume.id)
                               ? 'border-primary-600 bg-primary-50'
-                              : (costume.available_quantity || 0) > 0
-                                ? 'border-neutral-200 hover:border-primary-300'
-                                : 'border-red-200 bg-red-50 hover:border-red-300'
+                              : 'border-neutral-200 hover:border-primary-300'
                           }`}
                           onClick={() => toggleCostumeSelection(costume.id)}
                         >
@@ -649,11 +645,8 @@ function Customers() {
                             <div>
                               <p className="font-semibold text-neutral-900">{costume.name}</p>
                               <p className="text-sm text-neutral-600">ID: {costume.costume_id} • Size: {costume.size}</p>
-                              <p className={`text-sm font-semibold ${
-                                (costume.available_quantity || 0) > 0 ? 'text-primary-600' : 'text-red-600'
-                              }`}>
+                              <p className="text-sm font-semibold text-primary-600">
                                 {costume.rental_price || 0} DH • Stock: {costume.available_quantity || 0}
-                                {(costume.available_quantity || 0) <= 0 && ' (Épuisé)'}
                               </p>
                             </div>
                           </div>
