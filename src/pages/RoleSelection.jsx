@@ -20,7 +20,7 @@ function RoleSelection() {
     },
     {
       id: 'salles',
-      title: 'Salles',
+      title: 'Sales',
       description: 'Suivi des ventes quotidiennes et gestion des revenus',
       icon: ShoppingCart,
       color: 'from-green-600 to-green-700',
