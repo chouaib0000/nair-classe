@@ -57,6 +57,7 @@ function DailySales() {
           id: itemId,
           name: item.name,
           sale_price: item.sale_price,
+          custom_price: item.sale_price,
           quantity: 1
         }];
       }
@@ -69,6 +70,12 @@ function DailySales() {
     ));
   };
 
+  const updateItemPrice = (itemId, price) => {
+    setSelectedItems(prev => prev.map(item =>
+      item.id === itemId ? { ...item, custom_price: parseFloat(price) || 0 } : item
+    ));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -78,12 +85,12 @@ function DailySales() {
     }
 
     const salesToInsert = selectedItems.map(selectedItem => {
-      const totalAmount = selectedItem.sale_price * selectedItem.quantity;
+      const totalAmount = selectedItem.custom_price * selectedItem.quantity;
       return {
         item_id: selectedItem.id,
         quantity_sold: selectedItem.quantity,
-        unit_price: selectedItem.sale_price,
-        total_amount: totalAmount,
+        unit_price: selectedItem.custom_price,
+        total_amount: selectedItem.custom_price * selectedItem.quantity,
         notes: globalNotes
       };
     });
@@ -155,7 +162,7 @@ function DailySales() {
     item.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.sale_price * item.quantity), 0);
+  const totalAmount = selectedItems.reduce((sum, item) => sum + (item.custom_price * item.quantity), 0);
 
   if (loading) {
     return (
@@ -302,6 +309,17 @@ function DailySales() {
                                 onChange={(e) => updateItemQuantity(item.id, e.target.value)}
                                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                               />
+                              <label className="block text-xs font-semibold text-neutral-700 mb-1 mt-3">
+                                Prix Unitaire (DH)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={isSelected.custom_price}
+                                onChange={(e) => updateItemPrice(item.id, e.target.value)}
+                                className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                              />
                             </div>
                           )}
                         </div>
@@ -319,9 +337,9 @@ function DailySales() {
                     <div className="space-y-2">
                       {selectedItems.map(item => (
                         <div key={item.id} className="flex items-center justify-between text-sm">
-                          <span className="text-neutral-900">{item.name} × {item.quantity}</span>
+                          <span className="text-neutral-900">{item.name} × {item.quantity} @ {item.custom_price.toFixed(2)} DH</span>
                           <span className="font-semibold text-green-600">
-                            {(item.sale_price * item.quantity).toFixed(2)} DH
+                            {(item.custom_price * item.quantity).toFixed(2)} DH
                           </span>
                         </div>
                       ))}
