@@ -268,31 +268,46 @@ function DailySales() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
                     {filteredItems.map((item) => {
                       const isSelected = selectedItems.find(si => si.id === item.id);
+                      const isOutOfStock = item.stock_quantity <= 0;
                       return (
                         <div
                           key={item.id}
                           className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                             isSelected
                               ? 'border-green-600 bg-green-50'
-                              : 'border-neutral-200 hover:border-green-300'
+                              : isOutOfStock
+                                ? 'border-red-300 bg-red-50 opacity-60 cursor-not-allowed'
+                                : 'border-neutral-200 hover:border-green-300'
                           }`}
-                          onClick={() => toggleItemSelection(item.id)}
+                          onClick={() => !isOutOfStock && toggleItemSelection(item.id)}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex items-start space-x-3 flex-1">
                               <input
                                 type="checkbox"
                                 checked={!!isSelected}
+                                disabled={isOutOfStock}
                                 onChange={() => {}}
-                                className="mt-1 w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-green-500"
+                                className="mt-1 w-5 h-5 text-green-600 border-neutral-300 rounded focus:ring-green-500 disabled:opacity-50"
                               />
                               <div className="flex-1">
                                 <p className="font-semibold text-neutral-900">{item.name}</p>
                                 <p className="text-sm text-neutral-600">ID: {item.item_id}</p>
                                 <p className="text-sm text-neutral-600">Catégorie: {item.category}</p>
-                                <p className="text-sm font-semibold text-green-600 mt-1">
-                                  {item.sale_price} DH • Stock: {item.stock_quantity}
-                                </p>
+                                <div className="flex items-center justify-between mt-1">
+                                  <p className="text-sm font-semibold text-green-600">
+                                    {item.sale_price} DH
+                                  </p>
+                                  {isOutOfStock ? (
+                                    <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-600 text-white uppercase">
+                                      Épuisé
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-neutral-600">
+                                      Stock: {item.stock_quantity}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -305,6 +320,7 @@ function DailySales() {
                                 type="number"
                                 min="1"
                                 max={item.stock_quantity}
+                                disabled={isOutOfStock}
                                 value={isSelected.quantity}
                                 onChange={(e) => updateItemQuantity(item.id, e.target.value)}
                                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
