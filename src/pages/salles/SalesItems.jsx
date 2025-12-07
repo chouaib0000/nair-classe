@@ -9,6 +9,7 @@ function SalesItems() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
@@ -138,11 +139,18 @@ function SalesItems() {
     });
   };
 
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.item_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredItems = items.filter(item => {
+    const matchesSearch = 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.item_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (stockFilter === 'all') return matchesSearch;
+    if (stockFilter === 'in-stock') return matchesSearch && item.stock_quantity > 0;
+    if (stockFilter === 'out-of-stock') return matchesSearch && item.stock_quantity <= 0;
+    
+    return matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -183,7 +191,7 @@ function SalesItems() {
           </button>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
@@ -194,13 +202,26 @@ function SalesItems() {
               className="w-full pl-12 pr-4 py-3.5 border border-neutral-200 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
             />
           </div>
+          <select
+            value={stockFilter}
+            onChange={(e) => setStockFilter(e.target.value)}
+            className="px-4 py-3.5 border border-neutral-200 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+          >
+            <option value="all">Tous les Articles</option>
+            <option value="in-stock">En Stock</option>
+            <option value="out-of-stock">Épuisé</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl border border-neutral-100 overflow-hidden hover:-translate-y-1 transition-all duration-300"
+              className={`group rounded-2xl shadow-lg hover:shadow-2xl border overflow-hidden hover:-translate-y-1 transition-all duration-300 ${
+                item.stock_quantity <= 0 
+                  ? 'bg-red-50 border-red-200' 
+                  : 'bg-white border-neutral-100'
+              }`}
             >
               {item.image_url ? (
                 <div className="aspect-video bg-gradient-to-br from-neutral-100 to-neutral-200 overflow-hidden">
@@ -217,7 +238,14 @@ function SalesItems() {
                 <p className="text-sm text-neutral-500 font-medium">Catégorie: {item.category}</p>
                 <div className="mt-4 space-y-2">
                   <p className="text-base font-bold text-green-600">{item.sale_price} DH</p>
-                  <p className="text-sm text-neutral-600">Stock: {item.stock_quantity}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-neutral-600">Stock: {item.stock_quantity}</p>
+                    {item.stock_quantity <= 0 && (
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white uppercase">
+                        Épuisé
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex space-x-2 mt-4">
                   <button
