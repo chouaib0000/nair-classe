@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabase';
 import Navigation from '../components/Navigation';
 import { useLanguage } from '../context/LanguageContext';
 import Swal from 'sweetalert2';
-import { Search, Clock, CheckCircle, XCircle, DollarSign, Eye } from 'lucide-react';
-import { format, isPast } from 'date-fns';
+import { Search, Clock, CheckCircle, XCircle, DollarSign, Eye, Calendar } from 'lucide-react';
+import { format, isPast, isFuture, parseISO } from 'date-fns';
 
 function Rentals() {
   const { t } = useLanguage();
@@ -146,7 +146,17 @@ function Rentals() {
     }
   };
 
-  const getStatusBadge = (status, expectedReturnDate) => {
+  const getStatusBadge = (status, rentalDate, expectedReturnDate) => {
+    // Check if rental is in the future (reserved)
+    if (isFuture(parseISO(rentalDate))) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-700 flex items-center space-x-1">
+          <Calendar className="w-3 h-3" />
+          <span>Réservé</span>
+        </span>
+      );
+    }
+    
     if (status === 'returned') {
       return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Retourné</span>;
     }
@@ -165,12 +175,23 @@ function Rentals() {
     );
   };
 
+  const isReserved = (rentalDate) => {
+    return isFuture(parseISO(rentalDate));
+  };
+
   const filteredGroups = groupedRentals.filter(group => {
     const matchesSearch = group.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       group.items.some(item => item.costumes?.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (filterStatus === 'all') return matchesSearch;
-    if (filterStatus === 'active') return matchesSearch && group.items.some(item => item.status === 'active');
+    if (filterStatus === 'reserved') {
+      return matchesSearch && group.items.some(item => isReserved(item.rental_date));
+    }
+    if (filterStatus === 'active') {
+      return matchesSearch && group.items.some(item => 
+        item.status === 'active' && !isReserved(item.rental_date)
+      );
+    }
     if (filterStatus === 'returned') return matchesSearch && group.items.every(item => item.status === 'returned');
     if (filterStatus === 'overdue') {
       return matchesSearch && group.items.some(item => 
@@ -183,7 +204,7 @@ function Rentals() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Navigation />
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-neutral-900">{t('rentalsTitle')}</h1>
           <p className="mt-2 text-neutral-600">{t('rentalsSubtitle')}</p>
@@ -194,18 +215,20 @@ function Rentals() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
             <input
               type="text"
+              placeholder="Search rentals..."
               placeholder={t('searchRentals')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
             <option value="all">{t('allRentals')}</option>
+            <option value="reserved">Réservé</option>
             <option value="active">{t('active')}</option>
             <option value="overdue">{t('overdue')}</option>
             <option value="returned">{t('returned')}</option>
@@ -214,8 +237,13 @@ function Rentals() {
 
         <div className="space-y-8">
           {filteredGroups.map((group, groupIndex) => {
-            const hasActiveRentals = group.items.some(item => item.status === 'active');
-            const activeRentalsInGroup = group.items.filter(item => item.status === 'active');
+            const hasActiveRentals = group.items.some(item => 
+              item.status === 'active' && !isReserved(item.rental_date)
+            );
+            const activeRentalsInGroup = group.items.filter(item => 
+              item.status === 'active' && !isReserved(item.rental_date)
+            );
+            const hasReservedRentals = group.items.some(item => isReserved(item.rental_date));
             const selectedInGroup = selectedForReturn.filter(id => 
               group.items.some(item => item.id === id)
             );
@@ -245,10 +273,12 @@ function Rentals() {
                 {/* Costumes List */}
                 <div className="divide-y divide-neutral-100">
                   {group.items.map((rental) => (
-                    <div key={rental.id} className="p-3 sm:p-6 hover:bg-neutral-50 transition-colors">
+                    <div key={rental.id} className={`p-3 sm:p-6 transition-colors ${
+                      isReserved(rental.rental_date) ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-neutral-50'
+                    }`}>
                       <div className="flex items-start gap-3 sm:gap-6">
                         {/* Checkbox for active rentals */}
-                        {rental.status === 'active' && (
+                        {rental.status === 'active' && !isReserved(rental.rental_date) && (
                           <div className="flex items-center pt-1 sm:pt-2">
                             <input
                               type="checkbox"
@@ -296,7 +326,7 @@ function Rentals() {
                               <h4 className="text-base sm:text-lg font-bold text-neutral-900">{rental.costumes?.name}</h4>
                               <p className="text-xs sm:text-sm text-neutral-600">ID: {rental.costumes?.costume_id}</p>
                             </div>
-                            {getStatusBadge(rental.status, rental.expected_return_date)}
+                            {getStatusBadge(rental.status, rental.rental_date, rental.expected_return_date)}
                           </div>
 
                           {rental.actual_return_date && (
@@ -329,7 +359,19 @@ function Rentals() {
                   ))}
                 </div>
 
-                {/* Group Actions */}
+                {/* Reserved Rentals Info */}
+                {hasReservedRentals && !hasActiveRentals && (
+                  <div className="bg-cyan-50 p-4 sm:p-6 border-t border-cyan-200">
+                    <div className="flex items-center space-x-2 text-cyan-700">
+                      <Calendar className="w-5 h-5" />
+                      <p className="text-sm font-semibold">
+                        Location réservée - Les costumes seront disponibles le {format(new Date(group.rentalDate), 'dd/MM/yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Group Actions - Only for active (not reserved) rentals */}
                 {hasActiveRentals && (
                   <div className="bg-neutral-50 p-4 sm:p-6 border-t border-neutral-200">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 sm:gap-0">
