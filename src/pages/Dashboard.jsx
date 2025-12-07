@@ -20,6 +20,7 @@ function Dashboard() {
     totalDailyRevenue: 0,
   });
   const [monthlyEarnings, setMonthlyEarnings] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchStats();
@@ -27,64 +28,109 @@ function Dashboard() {
   }, []);
 
   const fetchStats = async () => {
-    const [costumes, customers, rentals] = await Promise.all([
-      supabase.from('costumes').select('*', { count: 'exact' }),
-      supabase.from('customers').select('*', { count: 'exact' }),
-      supabase.from('rentals').select('*', { count: 'exact' }).eq('status', 'active'),
-    ]);
+    try {
+      const [costumes, customers, rentals] = await Promise.all([
+        supabase.from('costumes').select('*', { count: 'exact' }),
+        supabase.from('customers').select('*', { count: 'exact' }),
+        supabase.from('rentals').select('*', { count: 'exact' }).eq('status', 'active'),
+      ]);
 
-    const availableCostumes = costumes.data?.reduce((total, c) => {
-      return total + (c.available_quantity || 0);
-    }, 0) || 0;
+      // Check for errors in any of the responses
+      if (costumes.error || customers.error || rentals.error) {
+        console.error('Error fetching stats:', {
+          costumesError: costumes.error,
+          customersError: customers.error,
+          rentalsError: rentals.error
+        });
+        setError('Failed to load dashboard statistics');
+        // Set default values on error
+        setStats({
+          totalCostumes: 0,
+          availableCostumes: 0,
+          totalCustomers: 0,
+          activeRentals: 0,
+          totalDailyRevenue: 0,
+        });
+        return;
+      }
 
-    setStats({
-      totalCostumes: costumes.count || 0,
-      availableCostumes,
-      totalCustomers: customers.count || 0,
-      activeRentals: rentals.count || 0,
-    });
+      // Safely calculate available costumes with null checks
+      const availableCostumes = Array.isArray(costumes.data) 
+        ? costumes.data.reduce((total, c) => {
+            return total + (c?.available_quantity || 0);
+          }, 0)
+        : 0;
+
+      setStats({
+        totalCostumes: costumes.count || 0,
+        availableCostumes,
+        totalCustomers: customers.count || 0,
+        activeRentals: rentals.count || 0,
+      });
+    } catch (error) {
+      console.error('Unexpected error in fetchStats:', error);
+      setError('An unexpected error occurred while loading statistics');
+      setStats({
+        totalCostumes: 0,
+        availableCostumes: 0,
+        totalCustomers: 0,
+        activeRentals: 0,
+        totalDailyRevenue: 0,
+      });
+    }
   };
 
   const fetchMonthlyEarnings = async () => {
-    // Get rentals from the last 12 months
-    const twelveMonthsAgo = subMonths(new Date(), 11);
-    
-    const { data: rentals, error } = await supabase
-      .from('rentals')
-      .select('price, actual_return_date, status')
-      .eq('status', 'returned')
-      .gte('actual_return_date', twelveMonthsAgo.toISOString());
+    try {
+      // Get rentals from the last 12 months
+      const twelveMonthsAgo = subMonths(new Date(), 11);
+      
+      const { data: rentals, error } = await supabase
+        .from('rentals')
+        .select('price, actual_return_date, status')
+        .eq('status', 'returned')
+        .gte('actual_return_date', twelveMonthsAgo.toISOString());
 
-    if (!error && rentals) {
-      // Generate array of last 12 months
-      const months = eachMonthOfInterval({
-        start: twelveMonthsAgo,
-        end: new Date()
-      });
+      if (error) {
+        console.error('Error fetching monthly earnings:', error);
+        setMonthlyEarnings([]);
+        return;
+      }
 
-      // Calculate earnings for each month
-      const earningsByMonth = months.map(month => {
-        const monthStart = startOfMonth(month);
-        const monthEnd = endOfMonth(month);
-        
-        const monthRentals = rentals.filter(rental => {
-          const returnDate = new Date(rental.actual_return_date);
-          return returnDate >= monthStart && returnDate <= monthEnd;
+      if (rentals && Array.isArray(rentals)) {
+        // Generate array of last 12 months
+        const months = eachMonthOfInterval({
+          start: twelveMonthsAgo,
+          end: new Date()
         });
 
-        const totalEarnings = monthRentals.reduce((sum, rental) => {
-          return sum + (parseFloat(rental.price) || 0);
-        }, 0);
+        // Calculate earnings for each month
+        const earningsByMonth = months.map(month => {
+          const monthStart = startOfMonth(month);
+          const monthEnd = endOfMonth(month);
+          
+          const monthRentals = rentals.filter(rental => {
+            if (!rental?.actual_return_date) return false;
+            const returnDate = new Date(rental.actual_return_date);
+            return returnDate >= monthStart && returnDate <= monthEnd;
+          });
 
-        return {
-          month: format(month, 'MMMM yyyy', { locale: fr }),
-          monthShort: format(month, 'MMM', { locale: fr }),
-          earnings: totalEarnings,
-          count: monthRentals.length
-        };
-      });
+          const totalEarnings = monthRentals.reduce((sum, rental) => {
+            return sum + (parseFloat(rental?.price) || 0);
+          }, 0);
 
-      setMonthlyEarnings(earningsByMonth);
+          return {
+            month: format(month, 'MMMM yyyy', { locale: fr }),
+            monthShort: format(month, 'MMM', { locale: fr }),
+            earnings: totalEarnings,
+            count: monthRentals.length
+          };
+        });
+
+        setStats(prev => ({ ...prev, monthlyEarnings: earningsByMonth }));
+      } else {
+        setMonthlyEarnings([]);
+      }
 
       // Fetch total daily revenue (from rentals when payment is made upfront)
       const { data: allRentals, error: allRentalsError } = await supabase
@@ -92,72 +138,97 @@ function Dashboard() {
         .select('price, rental_date, payment_status')
         .eq('payment_status', 'completed');
 
-      if (!allRentalsError && allRentals) {
+      if (allRentalsError) {
+        console.error('Error fetching daily revenue:', allRentalsError);
+        setStats(prev => ({ ...prev, totalDailyRevenue: 0 }));
+      } else if (allRentals && Array.isArray(allRentals)) {
         const totalDailyRevenue = allRentals.reduce((sum, rental) => {
-          return sum + (parseFloat(rental.price) || 0);
+          return sum + (parseFloat(rental?.price) || 0);
         }, 0);
         setStats(prev => ({ ...prev, totalDailyRevenue }));
       }
+    } catch (error) {
+      console.error('Unexpected error in fetchMonthlyEarnings:', error);
+      setMonthlyEarnings([]);
+      setStats(prev => ({ ...prev, totalDailyRevenue: 0 }));
     }
   };
 
   const viewDailyBreakdown = async (monthData) => {
-    const monthStart = startOfMonth(new Date(monthData.month));
-    const monthEnd = endOfMonth(new Date(monthData.month));
-
-    const { data: dailyRentals, error } = await supabase
-      .from('rentals')
-      .select('price, actual_return_date, status')
-      .eq('status', 'returned')
-      .gte('actual_return_date', monthStart.toISOString())
-      .lte('actual_return_date', monthEnd.toISOString());
-
-    if (error) {
-      Swal.fire('Erreur', 'Impossible de charger les détails quotidiens', 'error');
-      return;
-    }
-
-    // Group by day
-    const dailyBreakdown = {};
-    dailyRentals.forEach(rental => {
-      const day = format(new Date(rental.actual_return_date), 'dd/MM/yyyy', { locale: fr });
-      if (!dailyBreakdown[day]) {
-        dailyBreakdown[day] = 0;
+    try {
+      if (!monthData?.month) {
+        Swal.fire('Erreur', 'Données du mois invalides', 'error');
+        return;
       }
-      dailyBreakdown[day] += parseFloat(rental.price) || 0;
-    });
 
-    // Create HTML table
-    const tableRows = Object.entries(dailyBreakdown)
-      .sort((a, b) => new Date(a[0].split('/').reverse().join('-')) - new Date(b[0].split('/').reverse().join('-')))
-      .map(([day, amount]) => `
-        <tr>
-          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${day}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #16a34a;">${amount.toFixed(2)} DH</td>
-        </tr>
-      `).join('');
+      const monthStart = startOfMonth(new Date(monthData.month));
+      const monthEnd = endOfMonth(new Date(monthData.month));
 
-    Swal.fire({
-      title: `Détails Quotidiens - ${monthData.month}`,
-      html: `
-        <div style="max-height: 400px; overflow-y: auto;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead style="position: sticky; top: 0; background: white;">
-              <tr>
-                <th style="padding: 12px; border-bottom: 2px solid #d1d5db; text-align: left;">Date</th>
-                <th style="padding: 12px; border-bottom: 2px solid #d1d5db; text-align: left;">Revenus</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-            </tbody>
-          </table>
-        </div>
-      `,
-      width: '600px',
-      confirmButtonText: 'Fermer',
-      confirmButtonColor: '#2563eb'
-    });
+      const { data: dailyRentals, error } = await supabase
+        .from('rentals')
+        .select('price, actual_return_date, status')
+        .eq('status', 'returned')
+        .gte('actual_return_date', monthStart.toISOString())
+        .lte('actual_return_date', monthEnd.toISOString());
+
+      if (error) {
+        Swal.fire('Erreur', 'Impossible de charger les détails quotidiens', 'error');
+        console.error('Error fetching daily breakdown:', error);
+        return;
+      }
+
+      if (!dailyRentals || !Array.isArray(dailyRentals)) {
+        Swal.fire('Info', 'Aucune donnée disponible pour ce mois', 'info');
+        return;
+      }
+
+      // Group by day
+      const dailyBreakdown = {};
+      dailyRentals.forEach(sale => {
+        if (sale?.actual_return_date) {
+          const day = format(new Date(sale.actual_return_date), 'dd/MM/yyyy', { locale: fr });
+          if (!dailyBreakdown[day]) {
+            dailyBreakdown[day] = 0;
+          }
+          dailyBreakdown[day] += parseFloat(sale?.price) || 0;
+        }
+      });
+
+      // Create HTML table
+      const tableRows = Object.entries(dailyBreakdown)
+        .sort((a, b) => new Date(a[0].split('/').reverse().join('-')) - new Date(b[0].split('/').reverse().join('-')))
+        .map(([day, amount]) => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${day}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold; color: #16a34a;">${amount.toFixed(2)} DH</td>
+          </tr>
+        `).join('');
+
+      Swal.fire({
+        title: `Détails Quotidiens - ${monthData.month}`,
+        html: `
+          <div style="max-height: 400px; overflow-y: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead style="position: sticky; top: 0; background: white;">
+                <tr>
+                  <th style="padding: 12px; border-bottom: 2px solid #d1d5db; text-align: left;">Date</th>
+                  <th style="padding: 12px; border-bottom: 2px solid #d1d5db; text-align: left;">Revenus</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tableRows}
+              </tbody>
+            </table>
+          </div>
+        `,
+        width: '600px',
+        confirmButtonText: 'Fermer',
+        confirmButtonColor: '#2563eb'
+      });
+    } catch (error) {
+      console.error('Unexpected error in viewDailyBreakdown:', error);
+      Swal.fire('Erreur', 'Une erreur inattendue est survenue', 'error');
+    }
   };
 
   const statCards = [
@@ -193,8 +264,41 @@ function Dashboard() {
     },
   ];
 
-  const totalEarnings = monthlyEarnings.reduce((sum, month) => sum + month.earnings, 0);
-  const currentMonthEarnings = monthlyEarnings.length > 0 ? monthlyEarnings[monthlyEarnings.length - 1].earnings : 0;
+  const totalEarnings = Array.isArray(monthlyEarnings) && monthlyEarnings.length > 0
+    ? monthlyEarnings.reduce((sum, month) => sum + (month?.earnings || 0), 0)
+    : 0;
+  const currentMonthEarnings = Array.isArray(monthlyEarnings) && monthlyEarnings.length > 0 
+    ? monthlyEarnings[monthlyEarnings.length - 1]?.earnings || 0 
+    : 0;
+
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <div className="bg-red-100 text-red-600 p-4 rounded-lg mb-4">
+                <p className="font-semibold">Erreur de chargement</p>
+                <p className="text-sm">{error}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setError(null);
+                  fetchStats();
+                  fetchMonthlyEarnings();
+                }}
+                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              >
+                Réessayer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-100">
@@ -277,7 +381,7 @@ function Dashboard() {
             })}
           </div>
 
-          {monthlyEarnings.length === 0 && (
+          {(!monthlyEarnings || monthlyEarnings.length === 0) && (
             <div className="text-center py-12">
               <DollarSign className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
               <p className="text-neutral-600">Aucune donnée de revenus disponible</p>
